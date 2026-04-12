@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Debugg — Solve</title>
+  <link rel="stylesheet" href="shared.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css"/>
+  <style>
+    body { overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    body::before, body::after { display: none; } /* no blobs on editor page */
+
+    /* Split layout */
+    .split { display: grid; grid-template-columns: 400px 1fr; flex: 1; min-height: 0; }
+    .left-panel { border-right: 1px solid var(--border); overflow-y: auto; display: flex; flex-direction: column; background: var(--bg); }
+    .prob-head { padding: 18px 20px 0; }
+    .prob-name { font-family: 'Clash Display', sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 8px; line-height: 1.25; }
+    .prob-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .prob-author { font-size: 12px; color: var(--text3); }
+    .prob-desc { font-size: 14px; line-height: 1.75; color: var(--text2); }
+    .hint-box { background: rgba(0,245,255,0.05); border: 1px solid rgba(0,245,255,0.18); border-radius: var(--r-md); padding: 12px 14px; margin-top: 14px; font-size: 13px; color: var(--text2); }
+    .hint-box strong { color: var(--cyan); }
+    .tc-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-md); padding: 12px 14px; margin-bottom: 10px; }
+    .tc-lbl { font-size: 11px; color: var(--text3); margin-bottom: 3px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; }
+    .tc-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text); white-space: pre-wrap; word-break: break-all; }
+    .section-lbl { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; }
+
+    /* Doubts */
+    .doubt-input { width: 100%; padding: 9px 12px; border-radius: var(--r-md); border: 1px solid var(--border2); background: var(--surface2); color: var(--text); font-size: 13px; outline: none; font-family: 'Cabinet Grotesk', sans-serif; resize: vertical; min-height: 64px; }
+    .doubt-input:focus { border-color: var(--cyan); }
+    .doubt-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-md); padding: 13px; margin-bottom: 10px; }
+    .doubt-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 8px; flex-wrap: wrap; }
+    .doubt-author { font-size: 12px; font-weight: 700; color: var(--cyan); }
+    .doubt-time { font-size: 11px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
+    .doubt-text { font-size: 13px; line-height: 1.6; margin-bottom: 8px; }
+    .doubt-foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .reply-toggle { font-size: 12px; color: var(--text2); background: none; border: none; cursor: pointer; font-family: 'Cabinet Grotesk', sans-serif; padding: 0; }
+    .reply-toggle:hover { color: var(--cyan); }
+    .solved-pill { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: rgba(16,185,129,.12); color: var(--green); border: 1px solid rgba(16,185,129,.25); }
+    .mark-solved { font-size: 11px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border2); background: transparent; color: var(--text3); cursor: pointer; font-family: 'Cabinet Grotesk', sans-serif; }
+    .mark-solved:hover { border-color: var(--green); color: var(--green); }
+    .replies-section { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; display: none; }
+    .replies-section.open { display: block; }
+    .reply-item { display: flex; gap: 9px; margin-bottom: 9px; }
+    .r-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--grad-pink); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: white; flex-shrink: 0; }
+    .r-content { flex: 1; }
+    .r-author { font-size: 11px; font-weight: 700; color: var(--pink); margin-bottom: 2px; }
+    .r-text { font-size: 13px; line-height: 1.5; }
+    .reply-form { display: flex; gap: 7px; margin-top: 8px; }
+    .reply-inp { flex: 1; padding: 7px 10px; border-radius: var(--r-sm); border: 1px solid var(--border2); background: var(--bg); color: var(--text); font-size: 12px; outline: none; font-family: 'Cabinet Grotesk', sans-serif; }
+    .reply-inp:focus { border-color: var(--pink); }
+    .reply-send { padding: 7px 13px; border-radius: var(--r-sm); border: none; background: var(--grad-pink); color: white; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; font-family: 'Cabinet Grotesk', sans-serif; }
+
+    /* Right panel — editor */
+    .right-panel { display: flex; flex-direction: column; min-height: 0; background: var(--bg); }
+    .editor-bar { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+    .lang-chip { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--violet); background: rgba(139,92,246,.12); padding: 4px 10px; border-radius: var(--r-sm); border: 1px solid rgba(139,92,246,.25); }
+    .editor-hint { font-size: 12px; color: var(--text3); }
+    .ml { margin-left: auto; }
+
+    /* CodeMirror */
+    .CodeMirror { height: 100% !important; font-family: 'JetBrains Mono', monospace !important; font-size: 13.5px !important; line-height: 1.65 !important; background: #060610 !important; }
+    [data-theme="light"] .CodeMirror { background: #f8f8ff !important; }
+    .editor-wrap { flex: 1; overflow: hidden; min-height: 0; }
+    .editor-wrap .CodeMirror { height: 100% !important; }
+
+    /* Console */
+    .console { border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; min-height: 150px; max-height: 280px; overflow-y: auto; }
+    .console-bar { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-bottom: 1px solid var(--border); }
+    .console-bar span { font-size: 13px; font-weight: 700; color: var(--text3); }
+    .console-body { padding: 10px 14px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; }
+    .tc-res { margin-bottom: 10px; }
+    .tc-res-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 3px; }
+    .tc-res-head.pass { color: var(--easy-color); }
+    .tc-res-head.fail { color: var(--hard-color); }
+    .tc-res-detail { color: var(--text3); font-size: 12px; }
+    .verdict { padding: 10px 14px; font-weight: 700; font-size: 13px; border-top: 1px solid var(--border); }
+    .verdict.pass { background: rgba(16,185,129,.07); color: var(--green); }
+    .verdict.fail { background: rgba(239,68,68,.07); color: var(--red); }
+
+    /* Success overlay */
+    .success-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); backdrop-filter: blur(10px); z-index: 999; align-items: center; justify-content: center; }
+    .success-overlay.show { display: flex; }
+    .success-card { background: var(--surface); border: 1px solid rgba(0,245,255,.35); border-radius: var(--r-xl); padding: 44px 40px; text-align: center; box-shadow: 0 0 80px rgba(0,245,255,.12); animation: modalIn .3s ease; max-width: 420px; width: 90%; }
+    .success-card h2 { font-family: 'Clash Display', sans-serif; font-size: 32px; font-weight: 700; background: var(--grad-green); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 10px; }
+    .success-card p { color: var(--text2); font-size: 15px; margin-bottom: 24px; }
+    .success-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+    @media(max-width:900px){.split{grid-template-columns:1fr;overflow:auto}.left-panel{max-height:45vh;border-right:none;border-bottom:1px solid var(--border)}.right-panel{height:55vh}}
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a class="nav-logo" href="dashboard.html">Debugg</a>
+  <a class="btn btn-ghost btn-sm" href="dashboard.html">← Back</a>
+  <span id="navTitle" style="font-size:14px;font-weight:600;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:center;padding:0 12px"></span>
+  <div id="navBadge"></div>
+  <button class="nav-icon-btn theme-btn" id="themeBtn">☀️</button>
+</nav>
+
+<div class="split">
+  <!-- LEFT -->
+  <div class="left-panel">
+    <div class="prob-head">
+      <div class="prob-name" id="probTitle">Loading…</div>
+      <div class="prob-meta">
+        <span id="diffBadge"></span>
+        <span id="errBadge"></span>
+        <span class="prob-author" id="probAuthor"></span>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-btn active" data-t="desc">Description</button>
+      <button class="tab-btn" data-t="tc">Test Cases</button>
+      <button class="tab-btn" data-t="doubts">Doubts <span id="doubtCount" style="font-size:11px;color:var(--text3)"></span></button>
+    </div>
+    <div style="padding:18px 20px;flex:1">
+      <div id="descPane">
+        <p class="prob-desc" id="probDesc"></p>
+        <div id="hintBox" style="display:none" class="hint-box"><strong>💡 Hint:</strong> <span id="hintText"></span></div>
+      </div>
+      <div id="tcPane" style="display:none"><div class="section-lbl">Sample Test Cases</div><div id="tcList"></div></div>
+      <div id="doubtsPane" style="display:none">
+        <div style="margin-bottom:12px">
+          <textarea class="doubt-input" id="doubtInput" placeholder="Post a doubt or ask for a hint…"></textarea>
+          <button class="btn btn-primary btn-sm" style="margin-top:7px" id="postDoubtBtn">Post</button>
+        </div>
+        <div id="doubtsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-panel">
+    <div class="editor-bar">
+      <span class="lang-chip" id="langChip">Python</span>
+      <span class="editor-hint">Fix the bug below</span>
+      <button class="btn btn-ghost btn-sm ml" id="resetBtn">↺ Reset</button>
+      <button class="btn btn-ghost btn-sm" id="runBtn">▶ Run</button>
+      <button class="btn btn-primary btn-sm" id="submitBtn">Submit Fix ⚡</button>
+    </div>
+    <div class="editor-wrap"><textarea id="codeEditor"></textarea></div>
+    <div class="console" id="consoleEl">
+      <div class="console-bar"><span>Console</span><span id="consoleStatus" style="margin-left:auto;font-size:12px;color:var(--text3)"></span></div>
+      <div class="console-body" id="consoleBody" style="color:var(--text3)">Run your code to see results here.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Success -->
+<div class="success-overlay" id="successOverlay">
+  <div class="success-card">
+    <h2>All Tests Passed!</h2>
+    <p>Bug squashed. Great debugging!</p>
+    <div class="success-btns">
+      <a class="btn btn-primary" href="dashboard.html">← All Problems</a>
+      <button class="btn btn-ghost" id="nextBtn">Next Problem →</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script type="module">
+import { auth, db } from './firebase-config.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { doc, getDoc, getDocs, addDoc, updateDoc, setDoc, collection, query, orderBy, onSnapshot, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initTheme, toggleTheme } from './theme.js';
+
+initTheme();
+document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+
+// ── Piston API (free, no key needed) ──
+const PISTON = 'https://emkc.org/api/v2/piston/execute';
+const LANG_MAP  = { Python:'python', JavaScript:'javascript', Java:'java', 'C++':'cpp', C:'c' };
+const LANG_VER  = { python:'3.10.0', javascript:'18.15.0', java:'15.0.2', cpp:'10.2.0', c:'10.2.0' };
+const CM_MODES  = { Python:'python', JavaScript:'javascript', Java:'text/x-java', 'C++':'text/x-c++src', C:'text/x-csrc' };
+
+const pid = new URLSearchParams(window.location.search).get('id');
+if (!pid) window.location.href = 'dashboard.html';
+
+let problem = null, currentUser = null, origCode = '';
+
+const editor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
+  theme:'dracula', lineNumbers:true, indentUnit:4, smartIndent:true, lineWrapping:false,
+  extraKeys:{ Tab:cm=>cm.replaceSelection('    '), 'Ctrl-Enter':()=>run(false), 'Cmd-Enter':()=>run(false) }
+});
+
+onAuthStateChanged(auth, async user => {
+  if (!user) { window.location.href='index.html'; return; }
+  currentUser = user;
+  try {
+    const snap = await getDoc(doc(db,'problems',pid));
+    if (!snap.exists()) { alert('Problem not found.'); window.location.href='dashboard.html'; return; }
+    problem = { id:snap.id, ...snap.data() };
+    renderProblem();
+    loadDoubts();
+  } catch(e) { alert('Load failed: '+e.message); }
+});
+
+function renderProblem() {
+  document.title = `Debugg — ${problem.title}`;
+  document.getElementById('navTitle').textContent = problem.title;
+  document.getElementById('probTitle').textContent = problem.title;
+  const db2 = document.getElementById('diffBadge');
+  db2.className = `badge badge-${(problem.difficulty||'').toLowerCase()}`;
+  db2.textContent = problem.difficulty;
+  if (problem.errorType) {
+    const eb = document.getElementById('errBadge');
+    eb.className = 'badge badge-lang'; eb.textContent = problem.errorType;
+  }
+  document.getElementById('navBadge').innerHTML = `<span class="badge badge-${(problem.difficulty||'').toLowerCase()}">${problem.difficulty}</span>`;
+  document.getElementById('probAuthor').textContent = `by ${problem.authorName||'Unknown'}`;
+  document.getElementById('probDesc').textContent = problem.description;
+  document.getElementById('langChip').textContent = problem.language;
+  if (problem.hint) { document.getElementById('hintBox').style.display=''; document.getElementById('hintText').textContent=problem.hint; }
+  const tcList = document.getElementById('tcList');
+  (problem.testCases||[]).slice(0,3).forEach((tc,i)=>{
+    const c=document.createElement('div'); c.className='tc-card';
+    c.innerHTML=`<div class="tc-lbl">Input</div><div class="tc-val">${esc(tc.input)}</div><div class="tc-lbl" style="margin-top:8px">Expected Output</div><div class="tc-val">${esc(tc.expectedOutput)}</div>`;
+    tcList.appendChild(c);
+  });
+  editor.setOption('mode', CM_MODES[problem.language]||'text');
+  origCode = problem.buggyCode||'';
+  editor.setValue(origCode);
+  setTimeout(()=>editor.refresh(),60);
+}
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('descPane').style.display = btn.dataset.t==='desc'?'':'none';
+  document.getElementById('tcPane').style.display = btn.dataset.t==='tc'?'':'none';
+  document.getElementById('doubtsPane').style.display = btn.dataset.t==='doubts'?'':'none';
+}));
+
+document.getElementById('resetBtn').addEventListener('click',()=>{ if(confirm('Reset to original buggy code?')) editor.setValue(origCode); });
+document.getElementById('runBtn').addEventListener('click',()=>run(false));
+document.getElementById('submitBtn').addEventListener('click',()=>run(true));
+
+// ── PISTON EXECUTION ──
+async function run(isSubmit) {
+  const code = editor.getValue().trim();
+  if (!code) return;
+  const tcs = problem.testCases||[];
+  const toRun = isSubmit ? tcs : tcs.slice(0,2);
+  if (!toRun.length) { setMsg('No test cases defined.'); return; }
+
+  const runBtn = document.getElementById('runBtn');
+  const subBtn = document.getElementById('submitBtn');
+  runBtn.disabled=true; subBtn.disabled=true;
+  runBtn.textContent='Running…'; subBtn.textContent='Running…';
+  document.getElementById('consoleBody').innerHTML=`<span class="spinner"></span>&nbsp; Running ${toRun.length} test case${toRun.length>1?'s':''}…`;
+  document.getElementById('consoleStatus').textContent='';
+
+  try {
+    const results = await Promise.all(toRun.map(tc=>pistonRun(code,tc)));
+    const passed = results.filter(r=>r.passed).length;
+    renderResults(results,passed,results.length);
+    await saveSubmission(code,passed,results.length,isSubmit);
+    if (isSubmit && passed===results.length) await handleAllPassed();
+  } catch(e) {
+    setMsg(`❌ ${e.message}\n\nIf this persists, check your internet connection.`);
+    document.getElementById('consoleStatus').textContent='Error';
+    document.getElementById('consoleStatus').style.color='var(--red)';
+  } finally {
+    runBtn.disabled=false; subBtn.disabled=false;
+    runBtn.textContent='▶ Run'; subBtn.textContent='Submit Fix ⚡';
+  }
+}
+
+async function pistonRun(code, tc) {
+  const langKey = LANG_MAP[problem.language]||'python';
+  const body = { language:langKey, version:LANG_VER[langKey]||'', files:[{content:code}], stdin:tc.input };
+  const res = await fetch(PISTON, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  if (!res.ok) {
+    const txt = await res.text().catch(()=>'');
+    throw new Error(`Piston API error ${res.status}${txt?' — '+txt.slice(0,100):''}`);
+  }
+  const data = await res.json();
+  const stdout = (data.run?.stdout||'').trim();
+  const stderr = (data.run?.stderr||'').trim();
+  const expected = tc.expectedOutput.trim();
+  const passed = stdout===expected && !data.run?.code;
+  return { input:tc.input, expected, got:stdout, stderr, passed, exitCode:data.run?.code };
+}
+
+function renderResults(results,passed,total) {
+  const body = document.getElementById('consoleBody');
+  body.innerHTML = '';
+  results.forEach((r,i)=>{
+    const d=document.createElement('div'); d.className='tc-res';
+    d.innerHTML=`<div class="tc-res-head ${r.passed?'pass':'fail'}">${r.passed?'✓':'✗'} Test ${i+1}: ${r.passed?'PASSED':'FAILED'}</div>
+      <div class="tc-res-detail">Input: ${esc(r.input)}</div>
+      <div class="tc-res-detail">Expected: <span style="color:var(--easy-color)">${esc(r.expected)}</span></div>
+      <div class="tc-res-detail">Got: <span style="color:${r.passed?'var(--easy-color)':'var(--hard-color)'}">${esc(r.got||'(no output)')}</span></div>
+      ${r.stderr?`<div class="tc-res-detail" style="color:var(--hard-color)">Error: ${esc(r.stderr.slice(0,300))}</div>`:''}`;
+    body.appendChild(d);
+  });
+  const old=document.getElementById('consoleEl').querySelector('.verdict');
+  if(old) old.remove();
+  const v=document.createElement('div'); v.className=`verdict ${passed===total?'pass':'fail'}`;
+  v.textContent = passed===total ? `✅ ${passed}/${total} tests passed — Bug fixed!` : `❌ ${passed}/${total} tests passed`;
+  document.getElementById('consoleEl').appendChild(v);
+  document.getElementById('consoleStatus').textContent=`${passed}/${total} passed`;
+  document.getElementById('consoleStatus').style.color = passed===total?'var(--green)':'var(--red)';
+}
+
+async function saveSubmission(code,passed,total,isSubmit) {
+  if(!currentUser||!problem) return;
+  try {
+    await addDoc(collection(db,'users',currentUser.uid,'submissions'),{
+      problemId:problem.id, problemTitle:problem.title, language:problem.language,
+      difficulty:problem.difficulty, code, passed, total,
+      status:passed===total?'Accepted':'Wrong Answer',
+      isSubmit, createdAt:serverTimestamp()
+    });
+  } catch(e){}
+}
+
+async function handleAllPassed() {
+  try {
+    const ref=doc(db,'users',currentUser.uid,'solved',problem.id);
+    if(!(await getDoc(ref)).exists()) {
+      await setDoc(ref,{solvedAt:serverTimestamp(),problemTitle:problem.title,difficulty:problem.difficulty});
+      await updateDoc(doc(db,'users',currentUser.uid),{solved:increment(1)});
+      await updateDoc(doc(db,'problems',problem.id),{solvedCount:increment(1)});
+      // Notify author
+      if(problem.authorId&&problem.authorId!=='system'&&problem.authorId!==currentUser.uid) {
+        await addDoc(collection(db,'users',problem.authorId,'notifications'),{
+          title:'🎉 Someone solved your challenge!',
+          body:`${currentUser.displayName||'A user'} just fixed "${problem.title}"`,
+          read:false, link:`solve.html?id=${problem.id}`, createdAt:serverTimestamp()
+        });
+      }
+    }
+  } catch(e){}
+  setTimeout(()=>document.getElementById('successOverlay').classList.add('show'),500);
+}
+
+document.getElementById('nextBtn').addEventListener('click',()=>window.location.href='dashboard.html');
+document.getElementById('successOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
+
+// ── DOUBTS ──
+function loadDoubts() {
+  const q=query(collection(db,'problems',pid,'doubts'),orderBy('createdAt','asc'));
+  onSnapshot(q,snap=>{
+    const items=snap.docs.map(d=>({id:d.id,...d.data()}));
+    document.getElementById('doubtCount').textContent=items.length?`(${items.length})`:'';
+    const list=document.getElementById('doubtsList');
+    if(!items.length){list.innerHTML='<div style="color:var(--text3);font-size:13px">No doubts yet. Post the first one!</div>';return;}
+    list.innerHTML='';
+    items.forEach(doubt=>{
+      const isOwn=currentUser&&doubt.authorId===currentUser.uid;
+      const div=document.createElement('div'); div.className='doubt-card'; div.dataset.id=doubt.id;
+      div.innerHTML=`
+        <div class="doubt-top"><span class="doubt-author">${esc(doubt.authorName||'User')}</span><span class="doubt-time">${doubt.createdAt?timeAgo(doubt.createdAt.seconds*1000):''}</span></div>
+        <div class="doubt-text">${esc(doubt.text)}</div>
+        <div class="doubt-foot">
+          <button class="reply-toggle" data-did="${doubt.id}">💬 ${doubt.replyCount||0} ${doubt.replyCount===1?'reply':'replies'}</button>
+          ${doubt.solved?'<span class="solved-pill">✓ Solved</span>':(isOwn?`<button class="mark-solved" data-did="${doubt.id}">Mark solved</button>`:'')}
+        </div>
+        <div class="replies-section" id="rep-${doubt.id}">
+          <div class="rep-inner"></div>
+          <div class="reply-form">
+            <input type="text" class="reply-inp" placeholder="Reply with a hint…"/>
+            <button class="reply-send" data-did="${doubt.id}">reply</button>
+          </div>
+        </div>`;
+      list.appendChild(div);
+      div.querySelector('.reply-toggle').addEventListener('click',()=>toggleReplies(doubt.id,div));
+      const ms=div.querySelector('.mark-solved');
+      if(ms) ms.addEventListener('click',()=>updateDoc(doc(db,'problems',pid,'doubts',doubt.id),{solved:true}));
+      div.querySelector('.reply-send').addEventListener('click',()=>postReply(doubt.id,div));
+    });
+  });
+}
+
+async function toggleReplies(did, container) {
+  const sec=container.querySelector(`#rep-${did}`)||document.getElementById(`rep-${did}`);
+  sec.classList.toggle('open');
+  if(!sec.classList.contains('open')) return;
+  const snap=await getDocs(query(collection(db,'problems',pid,'doubts',did,'replies'),orderBy('createdAt','asc')));
+  const inner=sec.querySelector('.rep-inner');
+  if(!snap.size){inner.innerHTML='<div style="color:var(--text3);font-size:12px;margin-bottom:6px">No replies yet.</div>';return;}
+  inner.innerHTML=snap.docs.map(d=>{
+    const r=d.data();
+    const ini=(r.authorName||'U').split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();
+    return `<div class="reply-item"><div class="r-avatar">${ini}</div><div class="r-content"><div class="r-author">${esc(r.authorName||'User')}</div><div class="r-text">${esc(r.text)}</div></div></div>`;
+  }).join('');
+}
+
+async function postReply(did, container) {
+  const inp=container.querySelector('.reply-inp');
+  const text=inp.value.trim();
+  if(!text||!currentUser) return;
+  inp.value='';
+  await addDoc(collection(db,'problems',pid,'doubts',did,'replies'),{text,authorId:currentUser.uid,authorName:currentUser.displayName||'User',createdAt:serverTimestamp()});
+  await updateDoc(doc(db,'problems',pid,'doubts',did),{replyCount:increment(1)});
+  // Notify doubt owner
+  try {
+    const ds=await getDoc(doc(db,'problems',pid,'doubts',did));
+    if(ds.exists()&&ds.data().authorId!==currentUser.uid){
+      await addDoc(collection(db,'users',ds.data().authorId,'notifications'),{
+        title:'💬 New reply on your doubt',body:`${currentUser.displayName||'Someone'} replied on "${problem.title}"`,
+        read:false,link:`solve.html?id=${pid}`,createdAt:serverTimestamp()
+      });
+    }
+  } catch(e){}
+  toggleReplies(did, container);
+}
+
+document.getElementById('postDoubtBtn').addEventListener('click',async()=>{
+  const text=document.getElementById('doubtInput').value.trim();
+  if(!text||!currentUser) return;
+  document.getElementById('doubtInput').value='';
+  await addDoc(collection(db,'problems',pid,'doubts'),{text,authorId:currentUser.uid,authorName:currentUser.displayName||'User',solved:false,replyCount:0,createdAt:serverTimestamp()});
+});
+
+function setMsg(m){document.getElementById('consoleBody').textContent=m;}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function timeAgo(ms){const d=Date.now()-ms,s=d/1e3,m=s/60,h=m/60,dy=h/24;if(dy>1)return Math.floor(dy)+'d ago';if(h>1)return Math.floor(h)+'h ago';if(m>1)return Math.floor(m)+'m ago';return 'just now';}
+</script>
+</body>
+</html>

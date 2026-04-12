@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Seed Problems — Debugg</title>
+  <link rel="stylesheet" href="shared.css"/>
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+    .seed-card { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--r-xl); padding: 36px 32px; max-width: 600px; width: 100%; }
+    h1 { font-family: 'Clash Display', sans-serif; font-size: 28px; font-weight: 700; margin-bottom: 8px; background: var(--grad-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .sub { color: var(--text2); font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
+    #status { font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 2; max-height: 420px; overflow-y: auto; background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-md); padding: 14px 16px; }
+    #status p { margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="seed-card">
+    <h1>🌱 Seeding 25 Problems</h1>
+    <p class="sub">Populating Firestore with pre-built bug challenges across Python, JavaScript, Java, C++, and C. Run this page only once. Problems that already exist will be skipped.</p>
+    <div id="status"><p style="color:var(--text3)">Connecting to Firebase…</p></div>
+  </div>
+  <script type="module" src="./seed-problems.js"></script>
+</body>
+</html>

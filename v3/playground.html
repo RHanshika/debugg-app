@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Debugg — Playground</title>
+  <link rel="stylesheet" href="shared.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css"/>
+  <style>
+    body{overflow:hidden;height:100vh;display:flex;flex-direction:column}
+    body::before,body::after{display:none}
+    .workspace{flex:1;display:grid;grid-template-columns:1fr 340px;min-height:0}
+    .ed-col{display:flex;flex-direction:column;border-right:1px solid var(--border)}
+    .ed-bar{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+    .lang-sel{padding:6px 10px;border-radius:var(--r-sm);border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:13px;font-family:'JetBrains Mono',monospace;outline:none;cursor:pointer}
+    .CodeMirror{height:100%!important;font-family:'JetBrains Mono',monospace!important;font-size:13.5px!important;line-height:1.65!important;background:#060610!important}
+    [data-theme="light"] .CodeMirror{background:#f8f8ff!important}
+    .ed-wrap{flex:1;overflow:hidden}
+    .ed-wrap .CodeMirror{height:100%!important}
+    .out-col{display:flex;flex-direction:column;background:var(--surface)}
+    .out-head{padding:11px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+    .out-head span{font-size:13px;font-weight:700}
+    .stdin-lbl{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:10px 15px 5px;flex-shrink:0}
+    .stdin-area{margin:0 15px 10px;padding:9px 11px;border-radius:var(--r-md);border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace;resize:none;outline:none;height:72px;flex-shrink:0}
+    .stdin-area:focus{border-color:var(--cyan)}
+    .out-divider{border:none;border-top:1px solid var(--border);margin:0;flex-shrink:0}
+    .out-lbl{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:10px 15px 5px;flex-shrink:0}
+    .out-body{flex:1;overflow-y:auto;padding:0 15px 15px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;white-space:pre-wrap;color:var(--text)}
+    @media(max-width:800px){.workspace{grid-template-columns:1fr}.out-col{border-top:1px solid var(--border);max-height:32vh}}
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a class="nav-logo" href="dashboard.html">Debugg</a>
+  <a class="nav-link" href="dashboard.html">Problems</a>
+  <a class="nav-link" href="submissions.html">Submissions</a>
+  <a class="nav-link" href="discuss.html">Discuss</a>
+  <a class="nav-link active" href="playground.html">Playground</a>
+  <div class="nav-spacer"></div>
+  <button class="nav-icon-btn theme-btn" id="themeBtn">☀️</button>
+  <a class="nav-avatar" href="profile.html" id="avatarBtn">D</a>
+</nav>
+<div class="workspace">
+  <div class="ed-col">
+    <div class="ed-bar">
+      <select class="lang-sel" id="langSel"><option value="python">Python 3</option><option value="javascript">JavaScript</option><option value="java">Java</option><option value="cpp">C++</option><option value="c">C</option></select>
+      <button class="btn btn-ghost btn-sm" id="clearBtn">Clear</button>
+      <button class="btn btn-primary btn-sm" id="runBtn" style="margin-left:auto">▶ Run Code</button>
+    </div>
+    <div class="ed-wrap"><textarea id="codeEditor"></textarea></div>
+  </div>
+  <div class="out-col">
+    <div class="out-head"><span>Output</span><span id="runStat" style="font-size:11px;color:var(--text3)"></span></div>
+    <div class="stdin-lbl">stdin</div>
+    <textarea class="stdin-area" id="stdinArea" placeholder="Input for your program…"></textarea>
+    <hr class="out-divider"/>
+    <div class="out-lbl">Result</div>
+    <div class="out-body" id="outBody" style="color:var(--text3)">Click Run to execute your code.</div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script type="module">
+import{auth}from'./firebase-config.js';import{onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";import{initTheme,toggleTheme}from'./theme.js';
+initTheme();document.getElementById('themeBtn').addEventListener('click',toggleTheme);
+onAuthStateChanged(auth,u=>{if(!u){window.location.href='index.html';return;}document.getElementById('avatarBtn').textContent=(u.displayName||'D').split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();});
+const PISTON='https://emkc.org/api/v2/piston/execute';
+const VER={python:'3.10.0',javascript:'18.15.0',java:'15.0.2',cpp:'10.2.0',c:'10.2.0'};
+const MODES={python:'python',javascript:'javascript',java:'text/x-java',cpp:'text/x-c++src',c:'text/x-csrc'};
+const STARTER={
+  python:`# Python 3 Playground\nn = int(input("Enter a number: "))\nprint(f"Square: {n*n}")`,
+  javascript:`const lines = require('fs').readFileSync('/dev/stdin','utf8').trim().split('\\n');\nconst n = parseInt(lines[0]);\nconsole.log('Square:', n * n);`,
+  java:`import java.util.Scanner;\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        System.out.println("Square: " + (n*n));\n    }\n}`,
+  cpp:`#include <iostream>\nusing namespace std;\nint main(){\n    int n; cin>>n;\n    cout<<"Square: "<<n*n<<endl;\n    return 0;\n}`,
+  c:`#include <stdio.h>\nint main(){\n    int n; scanf("%d",&n);\n    printf("Square: %d\\n",n*n);\n    return 0;\n}`
+};
+let lang='python';
+const ed=CodeMirror.fromTextArea(document.getElementById('codeEditor'),{theme:'dracula',lineNumbers:true,indentUnit:4,extraKeys:{Tab:cm=>cm.replaceSelection('    '),'Ctrl-Enter':()=>runCode(),'Cmd-Enter':()=>runCode()}});
+ed.setValue(STARTER[lang]);
+document.getElementById('langSel').addEventListener('change',e=>{lang=e.target.value;ed.setOption('mode',MODES[lang]);ed.setValue(STARTER[lang]||'');});
+document.getElementById('clearBtn').addEventListener('click',()=>ed.setValue(''));
+document.getElementById('runBtn').addEventListener('click',runCode);
+async function runCode(){
+  const code=ed.getValue().trim();if(!code)return;
+  const stdin=document.getElementById('stdinArea').value;
+  const btn=document.getElementById('runBtn');const out=document.getElementById('outBody');const stat=document.getElementById('runStat');
+  btn.disabled=true;btn.textContent='Running…';out.style.color='var(--text)';
+  out.innerHTML='<span class="spinner"></span>  Executing…';stat.textContent='';
+  const t0=Date.now();
+  try{
+    const res=await fetch(PISTON,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({language:lang,version:VER[lang],files:[{content:code}],stdin})});
+    if(!res.ok)throw new Error(`Piston API error ${res.status}`);
+    const data=await res.json();const el=((Date.now()-t0)/1000).toFixed(2)+'s';
+    const stdout=data.run?.stdout||'',stderr=data.run?.stderr||'',exit=data.run?.code;
+    if(stderr&&!stdout){out.style.color='var(--hard-color)';out.textContent=stderr;stat.textContent='Error · '+el;stat.style.color='var(--hard-color)';}
+    else{out.style.color='var(--text)';out.textContent=stdout||(stderr?'':' (no output)');if(stderr)out.textContent+='\n\nStderr:\n'+stderr;stat.textContent=`Exit ${exit??0} · ${el}`;stat.style.color=exit?'var(--hard-color)':'var(--easy-color)';}
+  }catch(e){out.style.color='var(--hard-color)';out.textContent='❌ '+e.message;stat.textContent='Error';stat.style.color='var(--hard-color)';}
+  finally{btn.disabled=false;btn.textContent='▶ Run Code';}
+}
+</script>
+</body>
+</html>

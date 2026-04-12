@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Debugg — Problems</title>
+  <link rel="stylesheet" href="shared.css"/>
+  <style>
+    /* Stats */
+    .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 28px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 18px; transition: border-color var(--t-fast); }
+    .stat-card:hover { border-color: var(--border2); }
+    .stat-card .val { font-family: 'Clash Display', sans-serif; font-size: 28px; font-weight: 700; }
+    .stat-card .lbl { font-size: 12px; color: var(--text3); margin-top: 2px; font-weight: 600; }
+    .val-easy { color: var(--easy-color); } .val-med { color: var(--med-color); } .val-hard { color: var(--hard-color); }
+    .val-total { background: var(--grad-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    /* Filters */
+    .filters { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+    .filter-group { display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: 3px; }
+    .ftab { padding: 6px 14px; border-radius: var(--r-sm); border: none; background: transparent; color: var(--text2); font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Cabinet Grotesk', sans-serif; transition: all var(--t-fast); }
+    .ftab.active { background: var(--surface2); color: var(--text); }
+    .diff-btn { padding: 6px 13px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); color: var(--text2); font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Cabinet Grotesk', sans-serif; transition: all var(--t-fast); }
+    .diff-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    .diff-btn.active { border-color: var(--cyan); color: var(--cyan); background: rgba(0,245,255,0.06); }
+    .search-inp { flex: 1; min-width: 160px; padding: 7px 13px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; font-family: 'Cabinet Grotesk', sans-serif; outline: none; }
+    .search-inp:focus { border-color: var(--cyan); }
+    .lang-sel { padding: 7px 12px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); color: var(--text2); font-size: 13px; font-family: 'Cabinet Grotesk', sans-serif; outline: none; cursor: pointer; }
+
+    /* Problem table */
+    .prob-table { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl); overflow: hidden; }
+    .prob-header { display: grid; grid-template-columns: 52px 1fr 110px 120px 80px 70px; padding: 11px 20px; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: .8px; text-transform: uppercase; }
+    .prob-row { display: grid; grid-template-columns: 52px 1fr 110px 120px 80px 70px; padding: 14px 20px; border-bottom: 1px solid var(--border); align-items: center; cursor: pointer; transition: background var(--t-fast); text-decoration: none; color: inherit; }
+    .prob-row:last-child { border-bottom: none; }
+    .prob-row:hover { background: var(--surface2); }
+    .prob-row.solved .pnum { color: var(--easy-color); }
+    .pnum { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text3); }
+    .ptitle-wrap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .ptitle { font-size: 14px; font-weight: 600; }
+    .perr { font-size: 11px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
+    .empty-row { padding: 48px; text-align: center; color: var(--text3); font-size: 14px; }
+    .loading-row { padding: 40px; text-align: center; color: var(--text3); font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+    /* Upload modal */
+    .tc-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 7px; margin-bottom: 8px; align-items: center; }
+    .tc-del { width: 28px; height: 28px; border-radius: var(--r-sm); border: none; background: rgba(239,68,68,.15); color: var(--red); cursor: pointer; font-size: 13px; }
+    .tc-add { font-size: 12px; padding: 6px 12px; border-radius: var(--r-sm); border: 1px dashed var(--border2); background: transparent; color: var(--text3); cursor: pointer; font-family: 'Cabinet Grotesk', sans-serif; transition: all var(--t-fast); }
+    .tc-add:hover { border-color: var(--cyan); color: var(--cyan); }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    @media(max-width:700px){
+      .prob-header,.prob-row { grid-template-columns: 42px 1fr 80px 60px; }
+      .prob-header>*:nth-child(n+5),.prob-row>*:nth-child(n+5) { display: none; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a class="nav-logo" href="dashboard.html">Debugg</a>
+  <a class="nav-link active" href="dashboard.html">Problems</a>
+  <a class="nav-link" href="submissions.html">Submissions</a>
+  <a class="nav-link" href="discuss.html">Discuss</a>
+  <a class="nav-link" href="playground.html">Playground</a>
+  <div class="nav-spacer"></div>
+  <div class="streak-pill">🔥 <span id="navStreak">0</span></div>
+  <button class="btn btn-primary btn-sm" id="uploadBtn">+ Upload</button>
+  <div class="notif-wrapper">
+    <button class="nav-icon-btn" id="notifBtn" title="Notifications">🔔<span class="notif-dot" id="notifDot"></span></button>
+    <div class="notif-panel" id="notifPanel">
+      <div class="notif-panel-head"><span>Notifications</span><button class="notif-mark-btn" id="markAllRead">Mark all read</button></div>
+      <div class="notif-list" id="notifList"><div class="notif-empty">No notifications yet</div></div>
+    </div>
+  </div>
+  <button class="nav-icon-btn theme-btn" id="themeBtn" title="Dark mode">☀️</button>
+  <a class="nav-avatar" href="profile.html" id="avatarBtn">D</a>
+</nav>
+
+<div class="page-wrap">
+  <div class="section-title fade-up">Bug Challenges</div>
+
+  <div class="stats-row fade-up fade-up-1">
+    <div class="stat-card"><div class="val val-total" id="stTotal">—</div><div class="lbl">Total</div></div>
+    <div class="stat-card"><div class="val val-easy" id="stEasy">—</div><div class="lbl">Easy</div></div>
+    <div class="stat-card"><div class="val val-med" id="stMed">—</div><div class="lbl">Medium</div></div>
+    <div class="stat-card"><div class="val val-hard" id="stHard">—</div><div class="lbl">Hard</div></div>
+  </div>
+
+  <div class="filters fade-up fade-up-2">
+    <div class="filter-group">
+      <button class="ftab active" data-src="all">All</button>
+      <button class="ftab" data-src="official">Official</button>
+      <button class="ftab" data-src="community">Community</button>
+    </div>
+    <button class="diff-btn active" data-diff="All">All</button>
+    <button class="diff-btn" data-diff="Easy">Easy</button>
+    <button class="diff-btn" data-diff="Medium">Medium</button>
+    <button class="diff-btn" data-diff="Hard">Hard</button>
+    <input class="search-inp" id="searchBox" placeholder="Search…" type="text"/>
+    <select class="lang-sel" id="langFilter">
+      <option value="">All languages</option>
+      <option>Python</option><option>JavaScript</option><option>Java</option><option>C++</option><option>C</option>
+    </select>
+  </div>
+
+  <div class="prob-table fade-up fade-up-3" id="probTable">
+    <div class="prob-header"><span>#</span><span>Title</span><span>Difficulty</span><span>Language</span><span>Solved</span><span>Status</span></div>
+    <div class="loading-row"><span class="spinner"></span> Loading challenges…</div>
+  </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal-backdrop" id="uploadModal">
+  <div class="modal modal-wide">
+    <button class="modal-close" id="closeUpload">✕</button>
+    <h2 class="modal-title">Upload Bug Challenge</h2>
+    <div class="field-group"><label class="field-label">Title</label><input type="text" id="upTitle" class="field-input" placeholder="e.g. Fix the off-by-one in binary search" maxlength="80"/></div>
+    <div class="field-group"><label class="field-label">Description</label><input type="text" id="upDesc" class="field-input" placeholder="What should this code do? What type of bug is hiding?" maxlength="300"/></div>
+    <div class="two-col">
+      <div class="field-group"><label class="field-label">Language</label>
+        <select id="upLang" class="field-select"><option>Python</option><option>JavaScript</option><option>Java</option><option>C++</option><option>C</option></select></div>
+      <div class="field-group"><label class="field-label">Difficulty</label>
+        <select id="upDiff" class="field-select"><option>Easy</option><option>Medium</option><option>Hard</option></select></div>
+    </div>
+    <div class="field-group"><label class="field-label">Error Type</label><input type="text" id="upErrType" class="field-input" placeholder="e.g. Logic Error, Runtime Error, TLE…"/></div>
+    <div class="field-group"><label class="field-label">Buggy Code</label><textarea id="upCode" class="field-textarea" rows="8" placeholder="Paste the buggy code here…" style="font-family:'JetBrains Mono',monospace;font-size:13px"></textarea></div>
+    <div class="field-group"><label class="field-label">Hint (optional)</label><input type="text" id="upHint" class="field-input" placeholder="A nudge in the right direction…"/></div>
+    <div class="field-group">
+      <label class="field-label">Test Cases</label>
+      <div id="tcRows">
+        <div class="tc-row"><input type="text" placeholder="Input" class="field-input tc-in"/><input type="text" placeholder="Expected output" class="field-input tc-out"/><button class="tc-del" onclick="delTc(this)">✕</button></div>
+      </div>
+      <button class="tc-add" onclick="addTc()">+ Add test case</button>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:4px" id="submitUpload">Submit Challenge</button>
+    <p id="uploadMsg" style="font-size:13px;color:var(--easy-color);margin-top:10px;display:none"></p>
+  </div>
+</div>
+
+<script type="module">
+import { auth, db } from './firebase-config.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { collection, getDocs, addDoc, doc, getDoc, query, where, orderBy, serverTimestamp, onSnapshot, updateDoc, writeBatch, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initTheme, toggleTheme } from './theme.js';
+import { updateStreak } from './streak.js';
+
+initTheme();
+document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+
+let currentUser=null, allProblems=[], solvedSet=new Set(), activeSrc='all', activeDiff='All';
+
+onAuthStateChanged(auth, async user => {
+  if (!user) { window.location.href='index.html'; return; }
+  currentUser = user;
+  document.getElementById('avatarBtn').textContent = initials(user.displayName||'D');
+
+  // Streak
+  const streak = await updateStreak(user.uid);
+  document.getElementById('navStreak').textContent = streak;
+
+  // Solved set
+  try { const s=await getDocs(collection(db,'users',user.uid,'solved')); s.forEach(d=>solvedSet.add(d.id)); } catch(e){}
+
+  loadProblems();
+  loadNotifications(user.uid);
+});
+
+async function loadProblems() {
+  try {
+    const snap = await getDocs(query(collection(db,'problems'), where('approved','==',true)));
+    allProblems = snap.docs.map(d=>({id:d.id,...d.data()}));
+    // Sort: official first, then by difficulty Easy→Medium→Hard
+    const order = {Easy:0,Medium:1,Hard:2};
+    allProblems.sort((a,b)=>{
+      if(a.authorId==='system' && b.authorId!=='system') return -1;
+      if(a.authorId!=='system' && b.authorId==='system') return 1;
+      return (order[a.difficulty]||0)-(order[b.difficulty]||0);
+    });
+    updateStats(); renderTable();
+  } catch(e) {
+    document.getElementById('probTable').innerHTML='<div class="loading-row" style="color:var(--red)">Failed to load. Check Firebase config.</div>';
+  }
+}
+
+function updateStats() {
+  document.getElementById('stTotal').textContent = allProblems.length;
+  document.getElementById('stEasy').textContent = allProblems.filter(p=>p.difficulty==='Easy').length;
+  document.getElementById('stMed').textContent = allProblems.filter(p=>p.difficulty==='Medium').length;
+  document.getElementById('stHard').textContent = allProblems.filter(p=>p.difficulty==='Hard').length;
+}
+
+function renderTable() {
+  const q = document.getElementById('searchBox').value.toLowerCase();
+  const lang = document.getElementById('langFilter').value;
+  const filtered = allProblems.filter(p=>{
+    if(activeSrc==='official'&&p.authorId!=='system') return false;
+    if(activeSrc==='community'&&p.authorId==='system') return false;
+    if(activeDiff!=='All'&&p.difficulty!==activeDiff) return false;
+    if(lang&&p.language!==lang) return false;
+    if(q&&!p.title.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const header = `<div class="prob-header"><span>#</span><span>Title</span><span>Difficulty</span><span>Language</span><span>Solved</span><span>Status</span></div>`;
+  if(!filtered.length){document.getElementById('probTable').innerHTML=header+'<div class="empty-row">No problems match your filters.</div>';return;}
+  document.getElementById('probTable').innerHTML = header + filtered.map((p,i)=>{
+    const sv=solvedSet.has(p.id);
+    const ct=p.authorId!=='system'?`<span class="badge badge-community">Community</span>`:'';
+    const et=p.errorType?`<span class="perr">${esc(p.errorType)}</span>`:'';
+    return `<a class="prob-row${sv?' solved':''}" href="solve.html?id=${p.id}">
+      <span class="pnum">${sv?'✓':(i+1)}</span>
+      <span><div class="ptitle-wrap"><span class="ptitle">${esc(p.title)}</span>${ct}</div>${et}</span>
+      <span><span class="badge badge-${(p.difficulty||'').toLowerCase()}">${p.difficulty}</span></span>
+      <span><span class="badge badge-lang">${p.language}</span></span>
+      <span style="font-size:12px;color:var(--text3)">${p.solvedCount||0}</span>
+      <span>${sv?'✅':''}</span>
+    </a>`;
+  }).join('');
+}
+
+// Notifications (real-time)
+function loadNotifications(uid) {
+  const q2 = query(collection(db,'users',uid,'notifications'), orderBy('createdAt','desc'));
+  onSnapshot(q2, snap => {
+    const items = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const unread = items.filter(n=>!n.read).length;
+    document.getElementById('notifDot').classList.toggle('show', unread>0);
+    const list = document.getElementById('notifList');
+    if(!items.length){list.innerHTML='<div class="notif-empty">No notifications yet</div>';return;}
+    list.innerHTML = items.slice(0,20).map(n=>`
+      <div class="notif-item${n.read?'':' unread'}" data-id="${n.id}" data-link="${n.link||''}">
+        <div class="notif-item-title">${esc(n.title||'')}</div>
+        <div class="notif-item-body">${esc(n.body||'')}</div>
+        <div class="notif-item-time">${n.createdAt?timeAgo(n.createdAt.seconds*1000):''}</div>
+      </div>`).join('');
+    list.querySelectorAll('.notif-item').forEach(el=>{
+      el.addEventListener('click', async()=>{
+        await updateDoc(doc(db,'users',uid,'notifications',el.dataset.id),{read:true});
+        if(el.dataset.link) window.location.href=el.dataset.link;
+      });
+    });
+  });
+}
+
+document.getElementById('notifBtn').addEventListener('click', e=>{e.stopPropagation();document.getElementById('notifPanel').classList.toggle('open');});
+document.getElementById('markAllRead').addEventListener('click', async()=>{
+  const snap=await getDocs(collection(db,'users',currentUser.uid,'notifications'));
+  const batch=writeBatch(db);
+  snap.docs.forEach(d=>batch.update(d.ref,{read:true}));
+  await batch.commit();
+});
+document.addEventListener('click',e=>{if(!e.target.closest('.notif-wrapper'))document.getElementById('notifPanel').classList.remove('open');});
+
+// Filters
+document.querySelectorAll('.ftab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.ftab').forEach(x=>x.classList.remove('active'));b.classList.add('active');activeSrc=b.dataset.src;renderTable();}));
+document.querySelectorAll('.diff-btn').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.diff-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');activeDiff=b.dataset.diff;renderTable();}));
+document.getElementById('searchBox').addEventListener('input',renderTable);
+document.getElementById('langFilter').addEventListener('change',renderTable);
+
+// Upload
+document.getElementById('uploadBtn').addEventListener('click',()=>document.getElementById('uploadModal').classList.add('open'));
+document.getElementById('closeUpload').addEventListener('click',()=>document.getElementById('uploadModal').classList.remove('open'));
+window.addTc=()=>{const r=document.createElement('div');r.className='tc-row';r.innerHTML=`<input type="text" placeholder="Input" class="field-input tc-in"/><input type="text" placeholder="Expected output" class="field-input tc-out"/><button class="tc-del" onclick="delTc(this)">✕</button>`;document.getElementById('tcRows').appendChild(r);};
+window.delTc=btn=>btn.closest('.tc-row').remove();
+
+document.getElementById('submitUpload').addEventListener('click',async()=>{
+  const title=document.getElementById('upTitle').value.trim(),desc=document.getElementById('upDesc').value.trim(),code=document.getElementById('upCode').value.trim();
+  if(!title||!desc||!code){alert('Fill Title, Description and Code.');return;}
+  const tcs=[...document.querySelectorAll('#tcRows .tc-row')].map(r=>({input:r.querySelector('.tc-in').value.trim(),expectedOutput:r.querySelector('.tc-out').value.trim()})).filter(t=>t.input&&t.expectedOutput);
+  if(!tcs.length){alert('Add at least one test case.');return;}
+  const btn=document.getElementById('submitUpload');
+  btn.textContent='Submitting…';btn.disabled=true;
+  try {
+    await addDoc(collection(db,'problems'),{
+      title,description:desc,language:document.getElementById('upLang').value,
+      difficulty:document.getElementById('upDiff').value,errorType:document.getElementById('upErrType').value.trim()||'',
+      buggyCode:code,hint:document.getElementById('upHint').value.trim()||null,
+      testCases:tcs,authorId:currentUser.uid,authorName:currentUser.displayName||'User',
+      solvedCount:0,approved:true,tags:[],createdAt:serverTimestamp()
+    });
+    await updateDoc(doc(db,'users',currentUser.uid),{uploads:increment(1)});
+    const m=document.getElementById('uploadMsg');m.style.display='block';m.textContent='✅ Challenge uploaded and live!';
+    setTimeout(()=>{document.getElementById('uploadModal').classList.remove('open');m.style.display='none';loadProblems();},1800);
+  } catch(e){alert('Upload failed: '+e.message);}
+  finally{btn.textContent='Submit Challenge';btn.disabled=false;}
+});
+document.getElementById('uploadModal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
+
+function initials(n){return n.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function timeAgo(ms){const d=Date.now()-ms,s=d/1e3,m=s/60,h=m/60,dy=h/24;if(dy>1)return Math.floor(dy)+'d ago';if(h>1)return Math.floor(h)+'h ago';if(m>1)return Math.floor(m)+'m ago';return 'just now';}
+</script>
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Debugg — Find the Bug</title>
+  <link rel="stylesheet" href="shared.css"/>
+  <style>
+    body { display: flex; flex-direction: column; }
+
+    /* Hero */
+    .hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 80px 24px 60px; position: relative; z-index: 1; }
+    .hero-chip {
+      display: inline-flex; align-items: center; gap: 7px; padding: 6px 14px; border-radius: 999px;
+      border: 1px solid rgba(0,245,255,0.25); background: rgba(0,245,255,0.06);
+      font-size: 12px; font-weight: 700; color: var(--cyan); letter-spacing: .6px;
+      margin-bottom: 28px; animation: fadeUp .6s ease both;
+    }
+    .hero-chip .dot { width: 6px; height: 6px; background: var(--cyan); border-radius: 50%; animation: pulse 1.4s ease infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+
+    .hero h1 {
+      font-family: 'Clash Display', sans-serif;
+      font-size: clamp(48px, 8vw, 96px);
+      font-weight: 700; line-height: 1.0;
+      letter-spacing: -3px; margin-bottom: 20px;
+      animation: fadeUp .6s .1s ease both;
+    }
+    .hero h1 .line1 { display: block; color: var(--text); }
+    .hero h1 .line2 {
+      display: block;
+      background: var(--grad-accent);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 17px; color: var(--text2); max-width: 500px; line-height: 1.7;
+      margin-bottom: 36px; animation: fadeUp .6s .2s ease both;
+    }
+    .hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; animation: fadeUp .6s .3s ease both; }
+    .hero-btn-primary {
+      padding: 14px 32px; border-radius: var(--r-md); font-size: 15px; font-weight: 700;
+      background: var(--grad-accent); color: #050508; border: none; cursor: pointer; transition: all var(--t-fast);
+      font-family: 'Cabinet Grotesk', sans-serif;
+    }
+    .hero-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,245,255,0.3); }
+    .hero-btn-ghost {
+      padding: 14px 32px; border-radius: var(--r-md); font-size: 15px; font-weight: 700;
+      background: transparent; color: var(--text); border: 1px solid var(--border2); cursor: pointer;
+      transition: all var(--t-fast); font-family: 'Cabinet Grotesk', sans-serif;
+    }
+    .hero-btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* Stats */
+    .stats { display: flex; gap: 0; border: 1px solid var(--border2); border-radius: var(--r-xl); overflow: hidden; margin-top: 56px; max-width: 640px; width: 100%; animation: fadeUp .6s .4s ease both; }
+    .stat { flex: 1; padding: 20px 16px; text-align: center; }
+    .stat + .stat { border-left: 1px solid var(--border); }
+    .stat-n { font-family: 'Clash Display', sans-serif; font-size: 30px; font-weight: 700; background: var(--grad-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .stat-l { font-size: 12px; color: var(--text3); margin-top: 2px; font-weight: 600; }
+
+    /* Features */
+    .features { max-width: 1100px; margin: 0 auto; padding: 70px 24px 80px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; position: relative; z-index: 1; }
+    .feat {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl);
+      padding: 24px 22px; transition: all var(--t-med); position: relative; overflow: hidden;
+    }
+    .feat::before { content: ''; position: absolute; inset: 0; background: var(--grad-accent); opacity: 0; transition: opacity var(--t-med); }
+    .feat:hover { border-color: var(--cyan); transform: translateY(-3px); box-shadow: 0 16px 40px rgba(0,245,255,0.08); }
+    .feat:hover::before { opacity: 0.03; }
+    .feat-icon { font-size: 24px; margin-bottom: 14px; position: relative; }
+    .feat h3 { font-family: 'Clash Display', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 8px; position: relative; }
+    .feat p { font-size: 13px; color: var(--text2); line-height: 1.65; position: relative; }
+
+    /* Modal override for auth */
+    .auth-tabs { display: flex; gap: 4px; background: var(--surface2); border-radius: var(--r-md); padding: 4px; margin-bottom: 22px; }
+    .auth-tab { flex: 1; padding: 8px; border: none; border-radius: var(--r-sm); background: transparent; color: var(--text2); font-size: 13px; font-weight: 700; cursor: pointer; transition: all var(--t-fast); font-family: 'Cabinet Grotesk', sans-serif; }
+    .auth-tab.active { background: var(--surface3); color: var(--text); }
+    .form-error { font-size: 12px; color: var(--red); min-height: 16px; margin-top: 4px; }
+    .btn-google { width: 100%; padding: 11px; border-radius: var(--r-md); border: 1px solid var(--border2); background: var(--surface2); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all var(--t-fast); font-family: 'Cabinet Grotesk', sans-serif; }
+    .btn-google:hover { border-color: var(--border2); background: var(--surface3); }
+    .btn-google img { width: 18px; height: 18px; }
+    .divider-or { display: flex; align-items: center; gap: 10px; margin: 14px 0; font-size: 12px; color: var(--text3); }
+    .divider-or::before, .divider-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .submit-spinner { display: none; width: 16px; height: 16px; border: 2px solid rgba(5,5,8,0.2); border-top-color: #050508; border-radius: 50%; animation: spin .7s linear infinite; }
+
+    @media(max-width:600px){ .hero h1 { letter-spacing: -1.5px; } .stats { flex-wrap: wrap; } .stat { min-width: 50%; } }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-logo" href="index.html">Debugg</a>
+  <div class="nav-spacer"></div>
+  <button class="nav-icon-btn theme-btn" id="themeBtn" title="Dark mode">☀️</button>
+  <button class="btn btn-ghost btn-sm" onclick="openModal('login')">Sign in</button>
+  <button class="btn btn-primary btn-sm" onclick="openModal('register')">Get started</button>
+</nav>
+
+<section class="hero">
+  <div class="hero-chip"><span class="dot"></span> 25 Bug Challenges · Free Forever</div>
+  <h1>
+    <span class="line1">Find the Bug.</span>
+    <span class="line2">Ship Better Code.</span>
+  </h1>
+  <p class="hero-sub">Real broken code. Real test cases. Real dopamine when all tests go green. Debug challenges from the community and upload your own.</p>
+  <div class="hero-btns">
+    <button class="hero-btn-primary" onclick="openModal('register')">Start Debugging Free →</button>
+    <button class="hero-btn-ghost" onclick="openModal('login')">Sign in</button>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-n">25</div><div class="stat-l">Bug Challenges</div></div>
+    <div class="stat"><div class="stat-n" id="statUsers">—</div><div class="stat-l">Debuggers</div></div>
+    <div class="stat"><div class="stat-n">5</div><div class="stat-l">Languages</div></div>
+    <div class="stat"><div class="stat-n">Free</div><div class="stat-l">Always</div></div>
+  </div>
+</section>
+
+<section class="features">
+  <div class="feat fade-up fade-up-1"><div class="feat-icon">🐛</div><h3>Real Bug Challenges</h3><p>Logic errors, runtime crashes, TLE, segfaults, memory leaks — every type of bug across 5 languages.</p></div>
+  <div class="feat fade-up fade-up-2"><div class="feat-icon">⚡</div><h3>Instant Verdict</h3><p>Your fix runs against hidden test cases in real time. Pass them all to earn the solve.</p></div>
+  <div class="feat fade-up fade-up-3"><div class="feat-icon">💬</div><h3>Doubts & Hints</h3><p>Stuck? Post a doubt on any problem. Get hints from the community. Mark it solved.</p></div>
+  <div class="feat fade-up fade-up-4"><div class="feat-icon">🔥</div><h3>Daily Streak</h3><p>Visit every day to keep your streak alive. Miss a day and it resets. Stay consistent.</p></div>
+</section>
+
+<!-- Auth Modal -->
+<div class="modal-backdrop" id="authModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h2 class="modal-title" id="modalTitle">Welcome back</h2>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="loginTab" onclick="switchTab('login')">Sign in</button>
+      <button class="auth-tab" id="registerTab" onclick="switchTab('register')">Register</button>
+    </div>
+    <!-- Login -->
+    <div id="loginForm">
+      <div class="field-group"><label class="field-label">Email</label><input type="email" id="loginEmail" class="field-input" placeholder="you@example.com"/><div class="form-error" id="loginEmailErr"></div></div>
+      <div class="field-group"><label class="field-label">Password</label><input type="password" id="loginPassword" class="field-input" placeholder="••••••••"/><div class="form-error" id="loginPassErr"></div></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="doLogin()">
+        <span id="loginBtnText">Sign in</span><div class="submit-spinner" id="loginSpinner"></div>
+      </button>
+    </div>
+    <!-- Register -->
+    <div id="registerForm" style="display:none">
+      <div class="field-group"><label class="field-label">Name</label><input type="text" id="regName" class="field-input" placeholder="Your name"/><div class="form-error" id="regNameErr"></div></div>
+      <div class="field-group"><label class="field-label">Email</label><input type="email" id="regEmail" class="field-input" placeholder="you@example.com"/><div class="form-error" id="regEmailErr"></div></div>
+      <div class="field-group"><label class="field-label">Password</label><input type="password" id="regPassword" class="field-input" placeholder="Min 6 characters"/><div class="form-error" id="regPassErr"></div></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="doRegister()">
+        <span id="regBtnText">Create account</span><div class="submit-spinner" id="regSpinner"></div>
+      </button>
+    </div>
+    <div class="divider-or">or</div>
+    <button class="btn-google" onclick="doGoogle()"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt=""/>Continue with Google</button>
+  </div>
+</div>
+
+<script type="module">
+import { auth, db } from './firebase-config.js';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { doc, setDoc, getDoc, collection, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initTheme, toggleTheme } from './theme.js';
+
+initTheme();
+document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+onAuthStateChanged(auth, u => { if (u) window.location.href = 'dashboard.html'; });
+
+try { const s = await getDocs(collection(db,'users')); document.getElementById('statUsers').textContent = s.size+'+'; } catch(e){}
+
+window.openModal = tab => { document.getElementById('authModal').classList.add('open'); switchTab(tab); };
+window.closeModal = () => document.getElementById('authModal').classList.remove('open');
+window.switchTab = tab => {
+  const isL = tab==='login';
+  ['loginTab','registerTab'].forEach((id,i) => document.getElementById(id).classList.toggle('active', isL ? i===0 : i===1));
+  document.getElementById('loginForm').style.display = isL?'':'none';
+  document.getElementById('registerForm').style.display = isL?'none':'';
+  document.getElementById('modalTitle').textContent = isL?'Welcome back':'Create account';
+};
+
+window.doLogin = async () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPassword').value;
+  document.getElementById('loginEmailErr').textContent=''; document.getElementById('loginPassErr').textContent='';
+  if(!email){document.getElementById('loginEmailErr').textContent='Required';return;}
+  if(!pass){document.getElementById('loginPassErr').textContent='Required';return;}
+  setBusy('login',true);
+  try { await signInWithEmailAndPassword(auth,email,pass); window.location.href='dashboard.html'; }
+  catch(e){document.getElementById('loginPassErr').textContent=fe(e.code);}
+  finally{setBusy('login',false);}
+};
+
+window.doRegister = async () => {
+  const name=document.getElementById('regName').value.trim(), email=document.getElementById('regEmail').value.trim(), pass=document.getElementById('regPassword').value;
+  ['regNameErr','regEmailErr','regPassErr'].forEach(id=>document.getElementById(id).textContent='');
+  if(!name){document.getElementById('regNameErr').textContent='Required';return;}
+  if(!email){document.getElementById('regEmailErr').textContent='Required';return;}
+  if(pass.length<6){document.getElementById('regPassErr').textContent='Min 6 characters';return;}
+  setBusy('reg',true);
+  try {
+    const cred=await createUserWithEmailAndPassword(auth,email,pass);
+    await updateProfile(cred.user,{displayName:name});
+    await setDoc(doc(db,'users',cred.user.uid),{displayName:name,email,streak:0,solved:0,uploads:0,lastVisit:null,createdAt:serverTimestamp()});
+    window.location.href='dashboard.html';
+  } catch(e){document.getElementById('regEmailErr').textContent=fe(e.code);}
+  finally{setBusy('reg',false);}
+};
+
+window.doGoogle = async () => {
+  try {
+    const cred=await signInWithPopup(auth,new GoogleAuthProvider());
+    const ref=doc(db,'users',cred.user.uid);
+    if(!(await getDoc(ref)).exists()) await setDoc(ref,{displayName:cred.user.displayName||'Debugger',email:cred.user.email,streak:0,solved:0,uploads:0,lastVisit:null,createdAt:serverTimestamp()});
+    window.location.href='dashboard.html';
+  } catch(e){alert(fe(e.code));}
+};
+
+function setBusy(p,b){
+  document.getElementById(p==='login'?'loginBtnText':'regBtnText').style.display=b?'none':'';
+  document.getElementById(p==='login'?'loginSpinner':'regSpinner').style.display=b?'block':'none';
+}
+function fe(c){return({'auth/user-not-found':'No account found.','auth/wrong-password':'Incorrect password.','auth/email-already-in-use':'Email already registered.','auth/invalid-email':'Invalid email.','auth/too-many-requests':'Too many attempts. Try later.','auth/popup-closed-by-user':'Cancelled.'})[c]||'Something went wrong.';}
+document.getElementById('authModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+</script>
+</body>
+</html>
